@@ -18,6 +18,15 @@ const inNodeHandlerPath = path.join(__dirname, '..', 'lib', 'inNodeHandler.js');
 const { InNodeHandler } = require(inNodeHandlerPath);
 const { EVENT_TYPE, SWITCH } = require('../lib/constants');
 
+function createEvent(payload, payloadType = 'OnOff') {
+    return {
+        topic: 'items/testItem',
+        eventType: EVENT_TYPE.ITEM_STATE,
+        payload,
+        ...(payloadType && { payloadType }),
+    };
+}
+
 describe('inNodeHandler', function () {
     it('should setup the right handlers and send the right messages', async function () {
         const contextStore = {};
@@ -37,20 +46,8 @@ describe('inNodeHandler', function () {
             }),
         };
         const config = { concept: 'items', identifier: 'testItem', changesOnly: true, eventTypesAll: true };
-
-        const eventBus = {
-            publish: sinon.spy(),
-            subscribe: sinon.spy(),
-            unsubscribe: sinon.spy(),
-        };
-
-        const handler = { eventBus: eventBus };
-
-        const controller = {
-            handler: handler,
-            on: sinon.spy(),
-            off: sinon.spy(),
-        };
+        const eventBus = { publish: sinon.spy(), subscribe: sinon.spy(), unsubscribe: sinon.spy() };
+        const controller = { handler: { eventBus: eventBus }, on: sinon.spy(), off: sinon.spy() };
 
         const inNodeHandler = new InNodeHandler(node, config, controller, {
             generateId: () => '123',
@@ -69,59 +66,30 @@ describe('inNodeHandler', function () {
         // subscribe called for ConnectionStatus, NodeError, items/TestItem (no input)
         expect(eventBus.subscribe.callCount).to.equal(2, 'Subscribe called 3 times');
 
-        inNodeHandler._processEvent({
-            topic: 'items/testItem',
-            eventType: EVENT_TYPE.ITEM_STATE,
-            payload: SWITCH.ON,
-        });
+        inNodeHandler._processEvent(createEvent(SWITCH.ON, null));
         expect(node.send.firstCall.args[0]).to.deep.include(
             { payload: SWITCH.ON, eventType: EVENT_TYPE.ITEM_STATE, topic: 'items/testItem' },
             'First incoming message sent out'
         );
 
         node.send.resetHistory();
-        inNodeHandler._processEvent({
-            topic: 'items/testItem',
-            eventType: EVENT_TYPE.ITEM_STATE,
-            payload: SWITCH.ON,
-            payloadType: 'OnOff',
-        });
-        expect(node.send.notCalled, 'send not called again when payload not changed (despite type is now sent too)').to
-            .be.true;
+        inNodeHandler._processEvent(createEvent(SWITCH.ON));
+        expect(node.send.notCalled, 'send not called when payload unchanged (despite type is now sent too)').to.be.true;
 
-        inNodeHandler._processEvent({
-            topic: 'items/testItem',
-            eventType: EVENT_TYPE.ITEM_STATE,
-            payload: SWITCH.OFF,
-            payloadType: 'OnOff',
-        });
-        expect(node.send.firstCall.args[0]).to.deep.include(
-            {
-                payload: SWITCH.OFF,
-                payloadType: 'OnOff',
-                eventType: EVENT_TYPE.ITEM_STATE,
-                topic: 'items/testItem',
-            },
-            'Message with different value does get sent'
-        );
+        const offMessage = createEvent(SWITCH.OFF);
+        inNodeHandler._processEvent(offMessage);
+        expect(node.send.firstCall.args[0]).to.deep.include(offMessage, 'Message with different value does get sent');
 
         node.send.resetHistory();
         inNodeHandler.config.changesOnly = false;
-        inNodeHandler._processEvent({
-            topic: 'items/testItem',
-            eventType: EVENT_TYPE.ITEM_STATE,
-            payload: SWITCH.OFF,
-            payloadType: 'OnOff',
-        });
-        expect(node.send.firstCall.args[0]).to.deep.include(
-            {
-                payload: SWITCH.OFF,
-                eventType: EVENT_TYPE.ITEM_STATE,
-                topic: 'items/testItem',
-                payloadType: 'OnOff',
-            },
-            'Send called again on same payload if changes only is false'
-        );
+        inNodeHandler._processEvent(offMessage);
+        expect(node.send.firstCall.args[0]).to.deep.include(offMessage, 'Sent same value if not changes only');
+
+        inNodeHandler.config.eventTypesAll = false;
+        inNodeHandler.config.eventTypes = ['updated'];
+        node.send.resetHistory();
+        inNodeHandler._processEvent(offMessage);
+        expect(node.send.notCalled, 'send not called when event type does not match').to.be.true;
 
         eventBus.unsubscribe.resetHistory();
         inNodeHandler.cleanup();
@@ -137,28 +105,46 @@ describe('inNodeHandler', function () {
         inNodeHandler.setupNode();
         expect(node.on.callCount, 'Only on close called (no input channel)').to.equal(1);
         expect(node.status.getCall(0).args[0]).to.deep.equal(
-            { fill: 'grey', shape: 'ring', text: 'initializing... @ 12:34:56' },
+            { fill: 'grey', shape: 'ring', text: '[12:34:56] initializing...' },
             'node.status called with initializing'
         );
         expect(node.status.getCall(1).args[0]).to.deep.equal(
-            { fill: 'red', shape: 'ring', text: 'no controller @ 12:34:56' },
+            { fill: 'red', shape: 'ring', text: '[12:34:56] no controller' },
             'node.status called with no controller'
         );
         expect(inNodeHandler.cleanup(), 'Cleanup should succeed').to.not.throw;
         expect(node.off.callCount, 'No off called').to.equal(0);
     });
 
-
     it('should filter events accurately', async function () {
         const node = { status: sinon.spy(), send: sinon.spy(), on: sinon.spy(), off: sinon.spy(), log: sinon.spy() };
-        const config = { concept: 'items' };
+        const config = { concept: 'items', eventTypes: ['updated', 'command'], eventTypesAll: false };
         const inNodeHandler = new InNodeHandler(node, config, null, { generateTime: () => '12:34:56' });
-        expect(inNodeHandler._matchesEvent('state', { eventTypes: [ 'updated', 'command' ]})).to.be.false;
-        expect(inNodeHandler._matchesEvent('updated', { eventTypes: [ 'updated' ]})).to.be.true;
-        expect(inNodeHandler._matchesEvent('updated', { eventTypesAll: true })).to.be.true;
-        expect(inNodeHandler._matchesEvent('status', { eventTypes: [ 'state' ]})).to.be.true;
-        expect(inNodeHandler._matchesEvent('state', { eventTypes: [ 'status' ]})).to.be.false;
-        expect(inNodeHandler._matchesEvent('statechanged', { eventTypes: [ 'changed' ]})).to.be.true;
+        expect(inNodeHandler._matchesEvent('state')).to.be.false;
 
+        inNodeHandler.config.eventTypes = ['updated'];
+        expect(inNodeHandler._matchesEvent('updated')).to.be.true;
+
+        inNodeHandler.config.eventTypes = ['updated'];
+        inNodeHandler.config.eventTypesAll = true;
+        expect(inNodeHandler._matchesEvent('bogus')).to.be.true;
+
+        inNodeHandler.config.eventTypes = ['state'];
+        inNodeHandler.config.eventTypesAll = false;
+        expect(inNodeHandler._matchesEvent('status')).to.be.true;
+
+        inNodeHandler.config.eventTypes = ['status'];
+        expect(inNodeHandler._matchesEvent('state')).to.be.false;
+
+        inNodeHandler.config.eventTypes = ['changed'];
+        expect(inNodeHandler._matchesEvent('statechanged')).to.be.true;
+    });
+
+    it('should normalize event types accurately', async function () {
+        const inNodeHandler = new InNodeHandler({}, { concept: 'items' }, null, { generateTime: () => '12:34:56' });
+        expect(inNodeHandler._normalizeEventTypes(['state'])).to.deep.equal(['state']);
+        expect(inNodeHandler._normalizeEventTypes('["state"]')).to.deep.equal(['state']);
+        expect(inNodeHandler._normalizeEventTypes('')).to.deep.equal([]);
+        expect(inNodeHandler._normalizeEventTypes(1)).to.deep.equal([]);
     });
 });

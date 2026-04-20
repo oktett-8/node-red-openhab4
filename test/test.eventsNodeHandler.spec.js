@@ -90,12 +90,12 @@ describe('eventsNodeHandler', function () {
         expect(node.status.getCall(0).args[0], 'Initializing status called').to.deep.equal({
             fill: 'grey',
             shape: 'ring',
-            text: 'initializing... @ 12:34:56',
+            text: '[12:34:56] initializing...',
         });
         expect(node.status.getCall(1).args[0], 'Error status called').to.deep.equal({
             fill: 'red',
             shape: 'ring',
-            text: 'no controller @ 12:34:56',
+            text: '[12:34:56] no controller',
         });
 
         expect(eventsNodeHandler.cleanup(), 'Cleanup should succeed despite having no eventBus').to.not.throw;
@@ -119,7 +119,7 @@ describe('eventsNodeHandler', function () {
         expect(node.status.getCall(0).args[0], 'First message sent').to.deep.equal({
             fill: 'green',
             shape: 'dot',
-            text: 'event @ 12:34:56',
+            text: '[12:34:56] event',
         });
         node.status.resetHistory();
         eventsNodeHandler._processIncomingEvent({ topic: 'test', payload: 'value2' });
@@ -130,7 +130,7 @@ describe('eventsNodeHandler', function () {
         expect(node.status.getCall(0).args[0], 'Third message sent after one second').to.deep.equal({
             fill: 'green',
             shape: 'dot',
-            text: 'event @ 12:34:56',
+            text: '[12:34:56] event',
         });
     });
 });

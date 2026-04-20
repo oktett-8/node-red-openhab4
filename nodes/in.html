@@ -121,8 +121,8 @@
             controller: { value: "", type: "openhab4-controller", required: true },
             concept: { value: "items", required: true },
             identifier: { value: "", required: true },
-            eventTypes: { value: ['initialized', 'changed'], required: true },
-            eventTypesAll: { value: true },
+            eventTypes: { value: "['initialized', 'changed']", required: true },
+            eventTypesAll: { value: true, required: true },
             changesOnly: { value: true, required: true }
         },
         inputs: 0,
@@ -153,7 +153,10 @@
 
         const container = document.getElementById("dialog-form");
         const typeCheckboxes = container.querySelectorAll(".event-type");
-
+        if (!node.eventTypes || typeof node.eventTypes !== 'string' || !node.eventTypes.startsWith('[') || node.eventTypes.includes('undefined')) {
+            console.warn('EventTypes invalid, resetting to default');
+            node.eventTypes = ['initialized', 'changed'];
+        }
         const types = node.eventTypes || [];
         const isAll = node.eventTypesAll !== false; // default true
 
@@ -180,7 +183,6 @@
                 } else {
                     cb.parentNode.classList.remove("disabled");
                 }
-                //if (checked) cb.checked = false;
             });
         });
     }
@@ -194,13 +196,12 @@
         const isAll = allCheckbox.checked;
         node.eventTypesAll = isAll;
 
-        if (!isAll) {
-            const selected = [];
-            typeCheckboxes.forEach(cb => {
-                if (cb.checked) selected.push(cb.value);
-            });
-            node.eventTypes = selected;
-        }
+        // do this also if "All" is checked, to keep the individual types in sync (and avoid confusion when "All" is unchecked again)
+        const selected = [];
+        typeCheckboxes.forEach(cb => {
+            if (cb.checked) selected.push(cb.value);
+        });
+        node.eventTypes = selected;
         hidden.value = JSON.stringify(node.eventTypes);
     }
 

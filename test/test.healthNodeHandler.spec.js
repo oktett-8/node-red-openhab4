@@ -16,31 +16,24 @@ const sinon = require('sinon');
 const { HealthNodeHandler } = require('../lib/healthNodeHandler');
 const { STATE } = require('../lib/constants');
 
+function createNode() {
+    return {
+        type: 'openhab4-health',
+        status: sinon.spy(),
+        send: sinon.spy(),
+        on: sinon.spy(),
+        off: sinon.spy(),
+        log: sinon.spy(),
+    };
+}
+
 describe('healthNodeHandler', function () {
     it('should setup the right handlers and send the right messages', async function () {
-        const node = {
-            type: 'openhab4-health',
-            status: sinon.spy(),
-            send: sinon.spy(),
-            on: sinon.spy(),
-            off: sinon.spy(),
-            log: sinon.spy(),
-        };
+        const node = createNode();
         const config = {};
-
-        const eventBus = {
-            publish: sinon.spy(),
-            subscribe: sinon.spy(),
-            unsubscribe: sinon.spy(),
-        };
-
+        const eventBus = { publish: sinon.spy(), subscribe: sinon.spy(), unsubscribe: sinon.spy() };
         const handler = { eventBus: eventBus };
-
-        const controller = {
-            handler: handler,
-            on: sinon.spy(),
-            off: sinon.spy(),
-        };
+        const controller = { handler: handler, on: sinon.spy(), off: sinon.spy() };
 
         const healthNodeHandler = new HealthNodeHandler(node, config, controller, {
             generateId: () => '123',
@@ -61,44 +54,38 @@ describe('healthNodeHandler', function () {
         expect(subscribe.getCall(1).args[0]).to.equal('GlobalError');
 
         // this is called by the parent node when the connection status changes, but we can call it directly to test the logic
-        healthNodeHandler._afterConnectionStatus({ payload: 'ON', topic: 'ConnectionStatus' });
+        const connectionOnMessage = { payload: 'ON', topic: 'ConnectionStatus' };
+        const connectionOffMessage = { payload: 'OFF', topic: 'ConnectionStatus' };
+        healthNodeHandler._afterConnectionStatus(connectionOnMessage);
 
         expect(node.send.calledOnce, 'send called once').to.be.true;
         let sendArgs = node.send.getCall(0).args[0];
-        expect(sendArgs[0], 'First channel provides the status').to.include({
-            payload: 'ON',
-            topic: 'ConnectionStatus',
-        });
-
+        expect(sendArgs[0], 'First channel provides the status').to.include(connectionOnMessage);
         expect(sendArgs[1], 'Second channel is null').to.be.null;
-
         expect(node.status.calledTwice, 'status called twice').to.be.true;
 
         expect(node.status.getCall(0).args[0], 'Initializing status called').to.deep.equal({
             fill: 'grey',
             shape: 'ring',
-            text: 'initializing... @ 12:34:56',
+            text: '[12:34:56] initializing...',
         });
         expect(node.status.getCall(1).args[0], 'Status cleared').to.deep.equal({});
 
         node.send.resetHistory();
 
-        healthNodeHandler._afterConnectionStatus({ payload: 'ON', topic: 'ConnectionStatus' });
+        healthNodeHandler._afterConnectionStatus(connectionOnMessage);
         expect(node.send.notCalled, 'send not called again').to.be.true;
 
         node.status.resetHistory();
 
         //simulate a typical error sequence
-        healthNodeHandler._afterConnectionStatus({ payload: 'OFF', topic: 'ConnectionStatus' });
+        healthNodeHandler._afterConnectionStatus(connectionOffMessage);
         healthNodeHandler._onGlobalError({
             context: { state: STATE.ERROR },
             payload: { message: 'connection error', code: 'CONN' },
         });
         sendArgs = node.send.getCall(0).args[0];
-        expect(sendArgs[0], 'First channel provides the status').to.include({
-            payload: 'OFF',
-            topic: 'ConnectionStatus',
-        });
+        expect(sendArgs[0], 'First channel provides the status').to.include(connectionOffMessage);
         expect(sendArgs[1], 'Second channel is null').to.be.null;
 
         sendArgs = node.send.getCall(1).args[0];
@@ -111,8 +98,9 @@ describe('healthNodeHandler', function () {
         expect(node.status.getCall(0).args[0], 'Status set to error').to.deep.equal({
             fill: 'red',
             shape: 'ring',
-            text: 'CONN @ 12:34:56',
+            text: '[12:34:56] CONN',
         });
+
         healthNodeHandler.cleanup();
         const unsubscribe = controller.handler.eventBus.unsubscribe;
         expect(unsubscribe.callCount, 'controller.off called once').to.equal(1);
@@ -146,12 +134,12 @@ describe('healthNodeHandler', function () {
         expect(node.status.getCall(0).args[0], 'Initializing status called').to.deep.equal({
             fill: 'grey',
             shape: 'ring',
-            text: 'initializing... @ 12:34:56',
+            text: '[12:34:56] initializing...',
         });
         expect(node.status.getCall(1).args[0], 'no controller status called').to.deep.equal({
             fill: 'red',
             shape: 'ring',
-            text: 'no controller @ 12:34:56',
+            text: '[12:34:56] no controller',
         });
 
         expect(node.send.notCalled, 'Nothing sent out (as no controller, so no eventBus)').to.be.true;

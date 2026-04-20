@@ -2,7 +2,7 @@
   "name": "@essenius/node-red-openhab4",
   "author": "Rik Essenius (https://github.com/essenius)",
   "type": "commonjs",
-  "version": "0.10.32",
+  "version": "0.10.33",
   "description": "OpenHAB 4 integration nodes for Node-RED",
   "main": "nodes/controller.js",
   "engines": {
@@ -32,7 +32,7 @@
     }
   },
   "dependencies": {
-    "undici": "^7.22.0"
+    "undici": "^7.24.0"
   },
   "peerDependencies": {
     "node-red": "^3.0.0"

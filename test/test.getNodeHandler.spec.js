@@ -62,7 +62,7 @@ describe('getNodeHandler handleInput', function () {
         expect(node.status.getCall(0).args[0], 'initializing status called').to.deep.equal({
             fill: 'grey',
             shape: 'ring',
-            text: 'initializing... @ 12:34:56',
+            text: '[12:34:56] initializing...',
         });
         expect(node.status.getCall(1).args[0], 'status cleared after init').to.deep.equal({});
 
@@ -71,12 +71,12 @@ describe('getNodeHandler handleInput', function () {
         expect(node.status.getCall(2).args[0], 'requesting status called').to.deep.equal({
             fill: 'blue',
             shape: 'ring',
-            text: 'requesting... @ 12:34:56',
+            text: '[12:34:56] requesting...',
         });
         expect(node.status.getCall(3).args[0], 'OpenHAB version shown').to.deep.equal({
             fill: 'green',
             shape: 'dot',
-            text: '4.3.5 @ 12:34:56',
+            text: '[12:34:56] 4.3.5',
         });
         expect(node.send.getCall(0).args[0], 'Version sent').to.deep.equal({
             _msgid: '123',
@@ -95,12 +95,12 @@ describe('getNodeHandler handleInput', function () {
         expect(node.status.getCall(0).args[0], 'requesting status called').to.deep.equal({
             fill: 'blue',
             shape: 'ring',
-            text: 'requesting... @ 12:34:56',
+            text: '[12:34:56] requesting...',
         });
         expect(node.status.getCall(1).args[0], 'request failed').to.deep.equal({
             fill: 'red',
             shape: 'ring',
-            text: 'request failed @ 12:34:56',
+            text: '[12:34:56] request failed',
         });
         expect(node.status.calledTwice, 'Status called twice').to.be.true;
     });
@@ -114,12 +114,12 @@ describe('getNodeHandler handleInput', function () {
         expect(node.status.getCall(0).args[0], 'requesting status called').to.deep.equal({
             fill: 'blue',
             shape: 'ring',
-            text: 'requesting... @ 12:34:56',
+            text: '[12:34:56] requesting...',
         });
         expect(node.status.getCall(1).args[0], 'Empty response reported').to.deep.equal({
             fill: 'red',
             shape: 'ring',
-            text: 'empty response @ 12:34:56',
+            text: '[12:34:56] empty response',
         });
         expect(node.status.callCount, 'Status called twice').to.equal(2);
     });
@@ -130,12 +130,12 @@ describe('getNodeHandler handleInput', function () {
         expect(node.status.getCall(2).args[0], 'requesting status called').to.deep.equal({
             fill: 'blue',
             shape: 'ring',
-            text: 'requesting... @ 12:34:56',
+            text: '[12:34:56] requesting...',
         });
         expect(node.status.getCall(3).args[0], 'Error shown').to.deep.equal({
             fill: 'red',
             shape: 'ring',
-            text: 'empty response @ 12:34:56',
+            text: '[12:34:56] empty response',
         });
         expect(node.send.notCalled, 'No message sent').to.be.true;
     });
@@ -148,12 +148,12 @@ describe('getNodeHandler handleInput', function () {
         expect(node.status.getCall(2).args[0], 'requesting status called').to.deep.equal({
             fill: 'blue',
             shape: 'ring',
-            text: 'requesting... @ 12:34:56',
+            text: '[12:34:56] requesting...',
         });
         expect(node.status.getCall(3).args[0], 'Error shown').to.deep.equal({
             fill: 'red',
             shape: 'ring',
-            text: 'WRONG @ 12:34:56',
+            text: '[12:34:56] WRONG',
         });
         expect(node.send.notCalled, 'No message sent').to.be.true;
     });
@@ -178,12 +178,12 @@ describe('getNodeHandler handleInput', function () {
         expect(node.status.getCall(0).args[0], 'initializing status called').to.deep.equal({
             fill: 'grey',
             shape: 'ring',
-            text: 'initializing... @ 12:34:56',
+            text: '[12:34:56] initializing...',
         });
         expect(node.status.getCall(1).args[0], 'error status called').to.deep.equal({
             fill: 'red',
             shape: 'ring',
-            text: 'no controller @ 12:34:56',
+            text: '[12:34:56] no controller',
         });
         expect(node.on.callCount, 'On called twice (for close and input').to.equal(2);
     });
@@ -194,7 +194,7 @@ describe('getNodeHandler handleInput', function () {
         expect(node.status.getCall(2).args[0], 'no resource found').to.deep.equal({
             fill: 'red',
             shape: 'ring',
-            text: 'no resource found @ 12:34:56',
+            text: '[12:34:56] no resource found',
         });
     });
 });

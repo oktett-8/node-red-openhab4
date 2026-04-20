@@ -31,11 +31,11 @@ describe('outNodeHandler', function () {
         const msg = { topic: 'items/test', payload: 1234 };
         await outNodeHandler.handleInput(msg);
         expect(node.status.getCall(0).args[0]).to.deep.equal(
-            { fill: 'blue', shape: 'dot', text: '1234 ⇨ @ 12:34:56' },
+            { fill: 'blue', shape: 'dot', text: '[12:34:56] 1234 ⇨' },
             'status sending called'
         );
         expect(node.status.getCall(1).args[0]).to.deep.equal(
-            { fill: 'green', shape: 'dot', text: '1234 ✓ @ 12:34:56' },
+            { fill: 'green', shape: 'dot', text: '[12:34:56] 1234 ✓' },
             'status sent called'
         );
 
@@ -43,13 +43,44 @@ describe('outNodeHandler', function () {
         expect(outNodeHandler.getNodeType(), 'node type is Out').to.equal('Out');
     });
 
+    it('should ignore identifier if topic is set', async function () {
+        const { outNodeHandler, node } = createOutNodeHandler({ config: { concept: 'items', action: 'command' } });
+        const msg = { topic: 'test1', identifier: 'test2', payload: 'test' };
+
+        await outNodeHandler.handleInput(msg);
+
+        expect(node.send.firstCall.args[0], 'send called').to.deep.include({
+            topic: 'items/test1',
+            identifier: 'test1',
+            payload: 'test',
+            action: 'command',
+            input: {
+                topic: 'test1',
+                identifier: 'test2',
+                payload: 'test',
+            },
+        });
+    });
+
     it('should set state and show error with handleInput on undefined items', async function () {
         const { outNodeHandler, node } = createOutNodeHandler({ config: { concept: 'items', action: 'command' } });
         const msg = { payload: 'test' };
 
         await outNodeHandler.handleInput(msg);
+
         expect(node.status.firstCall.args, 'status called').to.deep.equal([
-            { fill: 'red', shape: 'ring', text: 'found no item @ 12:34:56' },
+            { fill: 'red', shape: 'ring', text: '[12:34:56] found no item' },
+        ]);
+    });
+
+    it('should set state and show error with handleInput on undefined actions', async function () {
+        const { outNodeHandler, node } = createOutNodeHandler({ config: { concept: 'items/item1' } });
+        const msg = { payload: 'test' };
+
+        await outNodeHandler.handleInput(msg);
+
+        expect(node.status.firstCall.args, 'status called').to.deep.equal([
+            { fill: 'red', shape: 'ring', text: '[12:34:56] no action specified' },
         ]);
     });
 
@@ -69,7 +100,7 @@ describe('outNodeHandler', function () {
 
         await outNodeHandler.handleInput(msg);
         expect(node.status.secondCall.args, 'status called').to.deep.equal([
-            { fill: 'red', shape: 'ring', text: 'test ✗ testItem @ 12:34:56' },
+            { fill: 'red', shape: 'ring', text: '[12:34:56] test ✗ testItem' },
         ]);
     });
 
@@ -89,7 +120,7 @@ describe('outNodeHandler', function () {
 
         await outNodeHandler.handleInput(msg);
         expect(node.status.getCall(0).args[0]).to.deep.equal(
-            { fill: 'blue', shape: 'dot', text: 'ABCD ⇨ @ 12:34:56' },
+            { fill: 'blue', shape: 'dot', text: '[12:34:56] ABCD ⇨' },
             'status sending called'
         );
     });

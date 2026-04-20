@@ -1,6 +1,7 @@
 ## openhab4-out
 
 Sends commands or state updates to an openHAB item.
+Only items are supported, as things cannot receive commands or state updates via the OpenHAB REST API.
 
 ### Configuration
 - ***Name*** *(string)* — Optional. Auto-generated from resource name if empty.

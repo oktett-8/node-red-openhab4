@@ -24,14 +24,12 @@ function createResourceHandler(RED, concept) {
         if (!controller) {
             return res.status(404).send(`Controller '${req.query.controller}' not found`);
         }
-        //const endpoint = CONCEPT.baseUrl(concept);
         const handler = controller.handler;
         const response = await handler.getResources(concept);
         if (!response.ok) {
             console.log(`getting all ${concept} failed`, response);
         }
         res.send(response);
-
     };
 }
 

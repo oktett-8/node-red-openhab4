@@ -87,7 +87,7 @@ describe('consumerNodeHandler', function () {
     it('should set status to init', function () {
         nodeHandler.setStatus(STATE.INIT, 'testing');
         expect(mockNode.status.firstCall.args).to.deep.equal(
-            [{ fill: 'grey', shape: 'ring', text: 'testing @ 12:34:56' }],
+            [{ fill: 'grey', shape: 'ring', text: '[12:34:56] testing' }],
             'Init handled ok'
         );
     });
@@ -95,7 +95,7 @@ describe('consumerNodeHandler', function () {
     it('should set status to warning', function () {
         nodeHandler.setStatus(STATE.WARNING, 'warning');
         expect(mockNode.status.firstCall.args).to.deep.equal(
-            [{ fill: 'yellow', shape: 'ring', text: 'warning @ 12:34:56' }],
+            [{ fill: 'yellow', shape: 'ring', text: '[12:34:56] warning' }],
             'Warning handled ok'
         );
     });
@@ -103,7 +103,7 @@ describe('consumerNodeHandler', function () {
     it('should replace unknown status by warning', function () {
         nodeHandler.setStatus('bogus');
         expect(mockNode.status.firstCall.args).to.deep.equal(
-            [{ fill: 'yellow', shape: 'ring', text: 'bogus @ 12:34:56' }],
+            [{ fill: 'yellow', shape: 'ring', text: '[12:34:56] bogus' }],
             'Unknown handled ok'
         );
     });
@@ -111,7 +111,7 @@ describe('consumerNodeHandler', function () {
     it('should replace unknown status by warning and message', function () {
         nodeHandler.setStatus('bogus', 'message');
         expect(mockNode.status.firstCall.args).to.deep.equal(
-            [{ fill: 'yellow', shape: 'ring', text: 'bogus: message @ 12:34:56' }],
+            [{ fill: 'yellow', shape: 'ring', text: '[12:34:56] bogus: message' }],
             'Unknown handled ok'
         );
     });
@@ -133,27 +133,27 @@ describe('consumerNodeHandler', function () {
     const testCases = [
         {
             input: 0,
-            expected: { fill: 'green', shape: 'ring', text: '0 @ 12:34:56' },
+            expected: { fill: 'green', shape: 'ring', text: '[12:34:56] 0' },
         },
         {
             input: false,
-            expected: { fill: 'green', shape: 'ring', text: 'false @ 12:34:56' },
+            expected: { fill: 'green', shape: 'ring', text: '[12:34:56] false' },
         },
         {
             input: 'ON',
-            expected: { fill: 'green', shape: 'dot', text: 'ON @ 12:34:56' },
+            expected: { fill: 'green', shape: 'dot', text: '[12:34:56] ON' },
         },
         {
             input: '',
-            expected: { fill: 'green', shape: 'ring', text: ' @ 12:34:56' },
+            expected: { fill: 'green', shape: 'ring', text: '[12:34:56] ' },
         },
         {
             input: null,
-            expected: { fill: 'yellow', shape: 'ring', text: '? @ 12:34:56' },
+            expected: { fill: 'yellow', shape: 'ring', text: '[12:34:56] ?' },
         },
         {
             input: 'very long text that exceeds the maximum length',
-            expected: { fill: 'green', shape: 'dot', text: 'very long text that exceeds the maxim...' },
+            expected: { fill: 'green', shape: 'dot', text: '[12:34:56] very long text that exceed...' },
         },
     ];
 

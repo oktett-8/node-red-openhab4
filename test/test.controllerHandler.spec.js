@@ -542,16 +542,6 @@ describe('controllerHandler.setupControllerHandler', function () {
             });
         });
 
-        /*it('should ignore messages with an unknown concept', async function () {
-            await expectIgnoredMessage({
-                data: JSON.stringify({
-                    type: 'ItemStateEvent',
-                    topic: 'openhab/bogus/bogus1/state',
-                    payload: JSON.stringify({ value: 'ON' }),
-                }),
-            });
-        });*/
-
         const testCases = [
             {
                 desc: 'numeric payloads',

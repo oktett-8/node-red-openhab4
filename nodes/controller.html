@@ -92,7 +92,6 @@
     function getHash(props) {
 
         const str = props.join('|'); // simple delimiter
-        console.log('hash base: ', str);
         let hash = 0;
         for (let i = 0; i < str.length; i++) {
             hash = ((hash << 5) - hash) + str.codePointAt(i);
@@ -110,7 +109,6 @@
             passwordField.value || '',
             allowSelfSignedField.checked
         ];
-        console.log('controllerData in setControllerHash', controllerData);
         hashField.value = getHash(controllerData);
         return hashField.value;
     }
@@ -133,13 +131,15 @@
     }
 
     function stripProtocol(url) {
-        return url.replace(/^https?:\/\//i, '');
+        return url
+            .replace(/^https?:\/\//i, '') // Remove protocol
+            .replace(/\/$/g, '');         // Remove trailing slash
     }
 
     RED.nodes.registerType('openhab4-controller', {
         category: 'config',
         defaults: {
-            name: { value: '', required: true },
+            name: { value: '', required: false },
             url: { value: 'https://localhost:8443/', required: true },
             allowSelfSigned: { value: false, required: true },
             eventFilter: { value: '*', required: true },
@@ -156,7 +156,6 @@
         labelStyle: function () { return this.name ? 'node_label_italic' : ''; },
         oneditsave: function () {
             this.hash = setControllerHash();
-            console.log('Set hash:', configField('hash').value);
         },
         oneditprepare: function () {
             const { urlField, urlWarning, tokenField, tokenWarning,
