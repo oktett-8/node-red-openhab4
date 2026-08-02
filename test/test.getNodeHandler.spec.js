@@ -18,7 +18,14 @@ const getNodeHandlerPath = path.join(__dirname, '..', 'lib', 'getNodeHandler.js'
 const { GetNodeHandler } = require(getNodeHandlerPath);
 
 function createGetNodeHandler({ controlResult = { ok: true, data: {} }, config = {}, time = '12:34:56' } = {}) {
-    const node = { status: sinon.spy(), send: sinon.spy(), on: sinon.spy(), log: sinon.spy(), name: 'test-node' };
+    const node = {
+        status: sinon.spy(),
+        send: sinon.spy(),
+        on: sinon.spy(),
+        log: sinon.spy(),
+        error: sinon.spy(),
+        name: 'test-node',
+    };
     let controller;
     if (controlResult === null) {
         controller = null;
@@ -52,6 +59,22 @@ async function expectHandleInputResult(getNodeHandler, msg, node) {
     });
 }
 
+function assertRequestingStatus(node) {
+    expect(node.status.getCall(2).args[0], 'requesting status called').to.deep.equal({
+        fill: 'blue',
+        shape: 'ring',
+        text: '[12:34:56] requesting...',
+    });
+}
+
+function assertErrorStatus(node, errorText) {
+    expect(node.status.getCall(3).args[0], 'Error shown').to.deep.equal({
+        fill: 'red',
+        shape: 'ring',
+        text: `[12:34:56] ${errorText}`,
+    });
+}
+
 describe('getNodeHandler handleInput', function () {
     it('should show version info if concept system is specified', async function () {
         const { node, getNodeHandler } = createGetNodeHandler({
@@ -79,15 +102,15 @@ describe('getNodeHandler handleInput', function () {
             text: '[12:34:56] 4.3.5',
         });
         expect(node.send.getCall(0).args[0], 'Version sent').to.deep.equal({
-            _msgid: '123',
+            //_msgid: '123',
             input: { topic: 'system/' },
             payload: '4.3.5',
             topic: 'system/',
         });
     });
 
-    it('should deal gracefully with failed fetch', async function () {
-        const { node, getNodeHandler } = createGetNodeHandler({ controlResult: { ok: false } });
+    it('should deal gracefully with failed fetch (transient)', async function () {
+        const { node, getNodeHandler } = createGetNodeHandler({ controlResult: { ok: false, retry: true } });
 
         node.status.resetHistory();
         await getNodeHandler.handleInput({ topic: 'items/testItem' });
@@ -103,13 +126,34 @@ describe('getNodeHandler handleInput', function () {
             text: '[12:34:56] request failed',
         });
         expect(node.status.calledTwice, 'Status called twice').to.be.true;
+        expect(node.error.notCalled, 'node.error not called for transient failure').to.be.true;
+    });
+
+    it('should deal gracefully with failed fetch (permanent)', async function () {
+        const { node, getNodeHandler } = createGetNodeHandler({
+            controlResult: { ok: false, retry: false, message: 'Item does not exist', code: 'NOT_FOUND' },
+        });
+
+        node.status.resetHistory();
+        const msg = { topic: 'items/testItem' };
+        await getNodeHandler.handleInput(msg);
+
+        expect(node.status.getCall(1).args[0], 'request failed status set').to.deep.equal({
+            fill: 'red',
+            shape: 'ring',
+            text: '[12:34:56] NOT_FOUND',
+        });
+        expect(node.error.calledOnce, 'node.error called for permanent failure').to.be.true;
+        expect(node.error.firstCall.args[0]).to.include('Item does not exist', 'error message included');
+        expect(node.error.firstCall.args[1]).to.equal(msg, 'original msg passed to node.error');
     });
 
     it('should deal gracefully with empty response payload', async function () {
         const { node, getNodeHandler } = createGetNodeHandler({ controlResult: { ok: true } });
 
         node.status.resetHistory();
-        await getNodeHandler.handleInput({ topic: 'items/testItem' });
+        const msg = { topic: 'items/testItem' };
+        await getNodeHandler.handleInput(msg);
 
         expect(node.status.getCall(0).args[0], 'requesting status called').to.deep.equal({
             fill: 'blue',
@@ -122,40 +166,41 @@ describe('getNodeHandler handleInput', function () {
             text: '[12:34:56] empty response',
         });
         expect(node.status.callCount, 'Status called twice').to.equal(2);
+        expect(node.error.calledOnce, 'node.error called for empty response').to.be.true;
+        expect(node.error.firstCall.args[1]).to.equal(msg, 'original msg passed to node.error');
     });
 
-    it('should show an error if incoming data is malformed', async function () {
-        const { node, getNodeHandler } = createGetNodeHandler({ controlResult: { ok: true, data: null } });
-        await getNodeHandler.handleInput({ topic: 'items/testItem', payload: 'test' });
-        expect(node.status.getCall(2).args[0], 'requesting status called').to.deep.equal({
-            fill: 'blue',
-            shape: 'ring',
-            text: '[12:34:56] requesting...',
-        });
-        expect(node.status.getCall(3).args[0], 'Error shown').to.deep.equal({
-            fill: 'red',
-            shape: 'ring',
-            text: '[12:34:56] empty response',
-        });
-        expect(node.send.notCalled, 'No message sent').to.be.true;
-    });
+    const cases = [
+        {
+            name: 'malformed data',
+            controlResult: { ok: true, data: null },
+            input: { topic: 'items/testItem', payload: 'test' },
+            expectedError: 'empty response',
+        },
+        {
+            name: 'error with message',
+            controlResult: {
+                ok: false,
+                message: 'wrong: unknown concept',
+                code: 'WRONG',
+            },
+            input: { topic: 'wrong/concept', payload: 'test' },
+            expectedError: 'WRONG',
+        },
+    ];
 
-    it('should show an error if incoming data has a message', async function () {
-        const { node, getNodeHandler } = createGetNodeHandler({
-            controlResult: { ok: false, message: 'wrong: unknown concept', code: 'WRONG' },
+    describe('error handling', function () {
+        cases.forEach(({ name, controlResult, input, expectedError }) => {
+            it(`should show an error if ${name}`, async function () {
+                const { node, getNodeHandler } = createGetNodeHandler({ controlResult });
+
+                await getNodeHandler.handleInput(input);
+
+                assertRequestingStatus(node);
+                assertErrorStatus(node, expectedError);
+                expect(node.send.notCalled, 'No message sent').to.be.true;
+            });
         });
-        await getNodeHandler.handleInput({ topic: 'wrong/concept', payload: 'test' });
-        expect(node.status.getCall(2).args[0], 'requesting status called').to.deep.equal({
-            fill: 'blue',
-            shape: 'ring',
-            text: '[12:34:56] requesting...',
-        });
-        expect(node.status.getCall(3).args[0], 'Error shown').to.deep.equal({
-            fill: 'red',
-            shape: 'ring',
-            text: '[12:34:56] WRONG',
-        });
-        expect(node.send.notCalled, 'No message sent').to.be.true;
     });
 
     it('should show waiting and then value if an item is specified', async function () {
@@ -190,11 +235,14 @@ describe('getNodeHandler handleInput', function () {
 
     it('should show error message if both topic and configured identifier are empty', async function () {
         const { node, getNodeHandler } = createGetNodeHandler({ config: {}, controlResult: { ok: true, data: null } });
-        await getNodeHandler.handleInput({ topic: '', payload: 'test' });
+        const msg = { topic: '', payload: 'test' };
+        await getNodeHandler.handleInput(msg);
         expect(node.status.getCall(2).args[0], 'no resource found').to.deep.equal({
             fill: 'red',
             shape: 'ring',
             text: '[12:34:56] no resource found',
         });
+        expect(node.error.calledOnce, 'node.error called').to.be.true;
+        expect(node.error.firstCall.args[1]).to.equal(msg, 'original msg passed to node.error');
     });
 });

@@ -97,7 +97,14 @@ describe('inNodeHandler', function () {
     });
 
     it('should not setup logic if error is set', async function () {
-        const node = { status: sinon.spy(), send: sinon.spy(), on: sinon.spy(), off: sinon.spy(), log: sinon.spy() };
+        const node = {
+            status: sinon.spy(),
+            send: sinon.spy(),
+            on: sinon.spy(),
+            off: sinon.spy(),
+            log: sinon.spy(),
+            error: sinon.spy(),
+        };
         const config = { concept: 'items' };
 
         // force an error by having no controller
@@ -114,6 +121,31 @@ describe('inNodeHandler', function () {
         );
         expect(inNodeHandler.cleanup(), 'Cleanup should succeed').to.not.throw;
         expect(node.off.callCount, 'No off called').to.equal(0);
+    });
+
+    it('should call node.error if no resource is specified', function () {
+        const node = {
+            status: sinon.spy(),
+            send: sinon.spy(),
+            on: sinon.spy(),
+            off: sinon.spy(),
+            log: sinon.spy(),
+            error: sinon.spy(),
+            context: () => ({ get: sinon.stub(), set: sinon.stub() }),
+        };
+        const eventBus = { subscribe: sinon.spy(), unsubscribe: sinon.spy() };
+        const controller = { handler: { eventBus } };
+        const config = { concept: 'items' }; // no identifier
+
+        const inNodeHandler = new InNodeHandler(node, config, controller, { generateTime: () => '12:34:56' });
+        inNodeHandler.setupNode();
+
+        expect(node.status.getCall(2).args[0]).to.deep.equal(
+            { fill: 'red', shape: 'ring', text: '[12:34:56] no resource specified' },
+            'error status set'
+        );
+        expect(node.error.calledOnce, 'node.error called').to.be.true;
+        expect(node.error.firstCall.args[1], 'null passed as second arg').to.be.null;
     });
 
     it('should filter events accurately', async function () {

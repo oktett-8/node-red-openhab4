@@ -57,6 +57,7 @@
 
             function validate() {
                 // only allow valid filters like items/*
+                // TODO: validate that things like items/group/member work
                 const FILTER_REGEX = /^[A-Za-z0-9_*?-]+\/[A-Za-z0-9_.:\-*?]+$/;
                 if (FILTER_REGEX.test(input.value.trim())) {
                     input.classList.remove('red-ui-editor-node-invalid');

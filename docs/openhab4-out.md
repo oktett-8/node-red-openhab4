@@ -29,7 +29,10 @@ This node sends actions (commands or state updates) to openHAB items:
 - `Command`: Sends a command to an item (e.g., turn a switch ON/OFF).
 - `Update`: Updates the state of an item directly.
 
-It will only generate output if the operation was sent successfully.
+The output is only produced on success, making it safe to use for 
+cascading — wiring the output of one openhab4-out node to the input 
+of another will only continue the chain if the previous command 
+succeeded.
 
 At least one value for each of the pairings is required:
 

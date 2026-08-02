@@ -416,6 +416,8 @@
 
     // --- Main entry point ---
 
+    // TODO: increase stability. If the RED object changes (e.g. in tests or on reload), 
+    // the stale tracker keeps running with the old deploy listener.
     let controllerStateTracker = null;
 
     function getControllerStateTracker(RED) {

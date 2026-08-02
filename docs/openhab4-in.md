@@ -1,4 +1,4 @@
-## openhab-in
+## openhab4-in
 
 Listens to events from a selected openHAB resource (things or items).
     

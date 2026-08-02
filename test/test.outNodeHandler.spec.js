@@ -18,7 +18,14 @@ const outNodeHandlerPath = path.join(__dirname, '..', 'lib', 'outNodeHandler.js'
 const { OutNodeHandler } = require(outNodeHandlerPath);
 
 function createOutNodeHandler({ controlResult = { ok: true, payload: {} }, config = {}, time = '12:34:56' } = {}) {
-    const node = { type: 'openhab4-out', status: sinon.spy(), on: sinon.spy(), send: sinon.spy(), log: sinon.spy() };
+    const node = {
+        type: 'openhab4-out',
+        status: sinon.spy(),
+        on: sinon.spy(),
+        send: sinon.spy(),
+        log: sinon.spy(),
+        error: sinon.spy(),
+    };
     const controllerHandler = { control: sinon.stub().resolves(controlResult) };
     const controller = { handler: controllerHandler };
     const outNodeHandler = new OutNodeHandler(node, config, controller, { generateTime: () => time });
@@ -62,29 +69,35 @@ describe('outNodeHandler', function () {
         });
     });
 
-    it('should set state and show error with handleInput on undefined items', async function () {
-        const { outNodeHandler, node } = createOutNodeHandler({ config: { concept: 'items', action: 'command' } });
-        const msg = { payload: 'test' };
+    const configErrorCases = [
+        {
+            desc: 'undefined items',
+            config: { concept: 'items', action: 'command' },
+            expectedStatus: 'found no item',
+        },
+        {
+            desc: 'undefined actions',
+            config: { concept: 'items/item1' },
+            expectedStatus: 'no action specified',
+        },
+    ];
 
-        await outNodeHandler.handleInput(msg);
+    for (const { desc, config, expectedStatus } of configErrorCases) {
+        it(`should set state and call node.error with handleInput on ${desc}`, async function () {
+            const { outNodeHandler, node } = createOutNodeHandler({ config });
+            const msg = { payload: 'test' };
 
-        expect(node.status.firstCall.args, 'status called').to.deep.equal([
-            { fill: 'red', shape: 'ring', text: '[12:34:56] found no item' },
-        ]);
-    });
+            await outNodeHandler.handleInput(msg);
 
-    it('should set state and show error with handleInput on undefined actions', async function () {
-        const { outNodeHandler, node } = createOutNodeHandler({ config: { concept: 'items/item1' } });
-        const msg = { payload: 'test' };
+            expect(node.status.firstCall.args, 'status called').to.deep.equal([
+                { fill: 'red', shape: 'ring', text: `[12:34:56] ${expectedStatus}` },
+            ]);
+            expect(node.error.calledOnce, 'node.error called').to.be.true;
+            expect(node.error.firstCall.args[1]).to.equal(msg, 'original msg passed to node.error');
+        });
+    }
 
-        await outNodeHandler.handleInput(msg);
-
-        expect(node.status.firstCall.args, 'status called').to.deep.equal([
-            { fill: 'red', shape: 'ring', text: '[12:34:56] no action specified' },
-        ]);
-    });
-
-    it('should show an error if control fails', async function () {
+    it('should show an error and call node.error if control fails permanently', async function () {
         const { outNodeHandler, node } = createOutNodeHandler({
             controlResult: { ok: false, retry: false, message: 'Simulated error' },
             config: {
@@ -102,6 +115,29 @@ describe('outNodeHandler', function () {
         expect(node.status.secondCall.args, 'status called').to.deep.equal([
             { fill: 'red', shape: 'ring', text: '[12:34:56] test ✗ testItem' },
         ]);
+        expect(node.error.calledOnce, 'node.error called for permanent failure').to.be.true;
+        expect(node.error.firstCall.args[0]).to.include('Simulated error', 'error message included');
+        expect(node.error.firstCall.args[0]).to.include('testItem', 'item name included');
+        expect(node.error.firstCall.args[1]).to.equal(msg, 'original msg passed to node.error');
+    });
+
+    it('should show an error status but not call node.error if control fails transiently', async function () {
+        const { outNodeHandler, node } = createOutNodeHandler({
+            controlResult: { ok: false, retry: true, message: 'OpenHAB offline' },
+            config: {
+                concept: 'items',
+                identifier: 'testItem',
+                action: 'update',
+            },
+        });
+
+        const msg = { payload: 'test' };
+
+        await outNodeHandler.handleInput(msg);
+        expect(node.status.secondCall.args, 'status called').to.deep.equal([
+            { fill: 'red', shape: 'ring', text: '[12:34:56] test ✗ testItem' },
+        ]);
+        expect(node.error.notCalled, 'node.error not called for transient failure').to.be.true;
     });
 
     it('should convert a buffer to utf8', async function () {
