@@ -9,14 +9,17 @@ Inspired by https://github.com/pdmangel/node-red-contrib-openhab2. Largely rewri
 ## Nodes
 
 ### Controller
+
 - [openhab4-controller](docs/openhab4-controller.md) controls the connection with OpenHAB
 
 ### Input / Output
+
 - [openhab4-in](docs/openhab4-in.md) - listens to a single resource (item or thing)
 - [openhab4-get](docs/openhab4-get.md) - requests the status of a single resource (item or thing)
 - [openhab4-out](docs/openhab4-out.md) - sends a command or an update to an item
 
 ### Diagnostics
+
 - [openhab4-health](docs/openhab4-health.md) - reports on the connection status and errors
 - [openhab4-events](docs/openhab4-events.md) - listen to the (potentially filtered) event stream
 
@@ -28,26 +31,33 @@ Copy the content into the clipboard, and import it into Node-Red (via `Ctrl-i`).
 There is also a [test flow generator](examples/generate-test-flow.js) which uses environment variables for OpenHAB protocol, server, port and test item. See [development.md](docs/development.md) for more details.
 
 ## Development Guide
+
 See [development.md](docs/development.md).
 
 ## Release notes
 
 ### v0.2.74
+
 - Nodes openhab4-controller and openhab4-get working 
 - First push to GitHub
 
 ### v0.9.0
+
 - First pre-release on npm
 
 ### v0.9.2
+
 - Dependency fixes, added example for localhost.
 
 ### v0.9.5
+
 - Fixed bug in item retrieval for in/out/get node definition (eliminated duplicates).
 
 ### v0.10.29
+
 - Major overhaul to support OpenHAB 2 and allow other concepts besides items. 
 - Breaking changes: interfaces changed to be more aligned with Node-RED conventions. Now requires Node-RED 4 (Node-RED 3 is end of life).
- 
+
 ## Dependency restrictions
+
 - As this is a commonjs project, chai needs to stay at version 4. Newer versions do not support commonjs.
