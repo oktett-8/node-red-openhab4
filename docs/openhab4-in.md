@@ -13,7 +13,7 @@ Listens to events from a selected openHAB resource (things or items).
 - **Filter events** *(boolean)* — Whether to pass changes only or all events.
 
 ### Inputs
-- ***topic*** *(string)* — (Only if no `Resource` is selected) The address of the item to send the command or update to.
+- ***topic*** *(string)* — (Only if no `Resource` is selected) The address of the item to get events from.
 
 ### Outputs
 
